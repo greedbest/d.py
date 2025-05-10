@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 import datetime
 import functools
 import inspect
@@ -42,6 +43,8 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
     overload,
 )
 import re
@@ -292,6 +295,11 @@ class _AttachmentIterator:
     def is_empty(self) -> bool:
         return self.index >= len(self.data)
 
+@dataclass
+class CommandArgument:
+    name: str
+    optional: bool
+
 
 class Command(_BaseCommand, Generic[CogT, P, T]):
     r"""A class that implements the protocol for a bot text command.
@@ -512,6 +520,37 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
 
         self.params: Dict[str, Parameter] = get_signature_parameters(function, globalns)
 
+    @discord.utils.cached_property
+    def arguments(self: Command) -> List[CommandArgument]:
+        def get_parameter_name(name: str, annotation: Optional[type]) -> str:
+            if annotation is not None and get_origin(annotation) is Literal:
+                literal_values = get_args(annotation)
+                if len(literal_values) > 1:
+                    return ', '.join([f"'{value}'" for value in literal_values[:-1]]) + f" or '{literal_values[-1]}'"
+                else:
+                    return f'`{literal_values[0]}`'  # type: ignore
+            return name.replace('_', ' ')
+        
+        return [
+            CommandArgument(
+                name=get_parameter_name(name, param.annotation),
+                optional=(get_origin(param.annotation) is Union and type(None) in get_args(param.annotation)),
+            )
+            for name, param in list(inspect.signature(self.callback).parameters.items())[2:]
+        ]
+        
+    @discord.utils.cached_property
+    def permissions(self) -> List[str]:
+        return [
+            perm
+            for check in self.checks
+            if getattr(check, '__closure__', None)
+            for cell in check.__closure__ # type: ignore
+            if isinstance(cell.cell_contents, dict)
+            for perm, val in cell.cell_contents.items()
+            if val
+        ] or ['N/A']
+        
     def add_check(self, func: UserCheck[Context[Any]], /) -> None:
         """Adds a check to the command.
 
