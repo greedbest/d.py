@@ -152,14 +152,14 @@ _loop: Any = _LoopSentinel()
 
 
 class CacheOptions:
-    """Represents a :class:`discord.Client` cache control.
+    """Represents a :class:`Client` cache control.
 
     Using this may allow you to control what things you want your client
     to cache.
 
     .. warning::
 
-        Using this may result on unexpected behaviour on certain parts of the
+        Using this may result in unexpected behaviour in certain parts of the
         library. For example, disabling ``guilds`` may cause problems on objects
         with a ``.guild`` attribute returning ``None``.
 
@@ -168,21 +168,21 @@ class CacheOptions:
     Parameters
     ----------
     guilds: :class:`bool`
-        Whether to cache guilds. Defaults to whether :attr:`discord.Intents.guilds` is enabled
+        Whether to cache guilds. Defaults to whether :attr:`Intents.guilds` is enabled
         or not.
     users: :class:`bool`
         Whether to cache users.
     members: :class:`bool`
-        Whether to cache members. Defaults to whether :attr:`discord.Intents.members` is enabled
+        Whether to cache members. Defaults to whether :attr:`Intents.members` is enabled
         or not.
     presences: :class:`bool`
-        Whether to cache members. Defaults to whether :attr:`discord.Intents.presences` is enabled
+        Whether to cache members. Defaults to whether :attr:`Intents.presences` is enabled
         or not.
     voice_states: :class:`bool`
-        Whether to cache voice states. Defaults to whether :attr:`discord.Intents.voice_states` is enabled
+        Whether to cache voice states. Defaults to whether :attr:`Intents.voice_states` is enabled
         or not.
     emojis_and_stickers: :class:`bool`
-        Whether to cache emojis and stickers. Defaults to whether :attr:`discord.Intents.emojis_and_stickers` is enabled
+        Whether to cache emojis and stickers. Defaults to whether :attr:`Intents.emojis_and_stickers` is enabled
         or not.
     soundboard_sounds: :class:`bool`
         Whether to cache guild's soundboard sounds.
@@ -194,6 +194,10 @@ class CacheOptions:
         Whether to cache guild roles.
     threads: :class:`bool`
         Whether to cache threads.
+    scheduled_events: :class:`bool`
+        Whether to cache scheduled events.
+    stage_instances: :class:`bool`
+        Whether to cache stage instances.
     """
 
     __valid_flags__ = (
@@ -208,6 +212,8 @@ class CacheOptions:
         'guild_channels',
         'roles',
         'threads',
+        'scheduled_events',
+        'stage_instances',
     )
 
     if TYPE_CHECKING:
@@ -222,6 +228,8 @@ class CacheOptions:
         guild_channels: bool
         roles: bool
         threads: bool
+        scheduled_events: bool
+        stage_instances: bool
 
     @overload
     def __init__(
@@ -238,6 +246,8 @@ class CacheOptions:
         guild_channels: bool = MISSING,
         roles: bool = MISSING,
         threads: bool = MISSING,
+        scheduled_events: bool = MISSING,
+        stage_instances: bool = MISSING,
     ) -> None: ...
 
     @overload
@@ -253,7 +263,6 @@ class CacheOptions:
         self._cache_data = kwargs
 
     def __getattr__(self, name: str) -> Any:
-
         val = self._cache_data.get(name)
         if val is not None:
             return val if val is not MISSING else False
@@ -288,6 +297,19 @@ class CacheOptions:
             presences=intents.presences,
             voice_states=intents.voice_states,
             emojis_and_stickers=intents.emojis_and_stickers,
+        )
+
+    @classmethod
+    def none(cls) -> CacheOptions:
+        """Creates a new :class:`CacheOptions` instance with nothing enabled.
+
+        Returns
+        -------
+        :class:`CacheOptions`
+            A new instance of cache options.
+        """
+        return cls(
+            **{flag: False for flag in cls.__valid_flags__}
         )
 
     def _update_from_intents(self, intents: Intents) -> None:

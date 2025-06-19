@@ -111,6 +111,9 @@ if TYPE_CHECKING:
     T = TypeVar('T')
     Channel = Union[GuildChannel, PrivateChannel, PartialMessageable]
 
+K = TypeVar('K')
+V = TypeVar('V')
+
 
 class ChunkRequest:
     def __init__(
@@ -170,6 +173,16 @@ async def logging_coroutine(coroutine: Coroutine[Any, Any, T], *, info: str) -> 
         await coroutine
     except Exception:
         _log.exception('Exception occurred during %s', info)
+
+
+class ImmutableDict(Generic[K, V], Dict[K, V]):
+    def __init__(self, state: ConnectionState) -> None:
+        self.__state: ConnectionState = state
+        super().__init__()
+
+    def __setitem__(self, key: K, value: V) -> None:
+        if self.__state.self_id and key == self.__state.self_id:
+            super().__setitem__(key, value)
 
 
 class ConnectionState(Generic[ClientT]):
@@ -273,6 +286,7 @@ class ConnectionState(Generic[ClientT]):
             if attr.startswith('parse_'):
                 parsers[attr[6:].upper()] = func
         self.cache_options: CacheOptions = options['cache_options']  # this will always be present
+        self.cache_options._update_from_intents(self._intents)
 
         self.clear()
 
@@ -282,6 +296,9 @@ class ConnectionState(Generic[ClientT]):
     @property
     def cache_guild_expressions(self) -> bool:
         return self._intents.emojis_and_stickers and self.cache_options.emojis_and_stickers
+
+    def create_immutable_dict(self, key_type: K = Any, value_type: V = Any) -> ImmutableDict[K, V]:
+        return ImmutableDict(self)
 
     async def close(self) -> None:
         for voice in self.voice_clients:
