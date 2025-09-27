@@ -1966,7 +1966,12 @@ class Guild(Hashable):
         await self._state.http.delete_guild(self.id)
 
     async def edit_me(
-        self, *, nick: Optional[str] = MISSING, banner: Optional[bytes] = MISSING, avatar: Optional[bytes] = MISSING
+        self,
+        *,
+        nick: Optional[str] = MISSING,
+        banner: Optional[bytes] = MISSING,
+        avatar: Optional[bytes] = MISSING,
+        bio: Optional[str] = MISSING,
     ) -> Optional[Member]:
         """|coro|
 
@@ -1991,6 +1996,9 @@ class Guild(Hashable):
             A :term:`py:bytes-like object` representing the image to upload.
             Could be ``None`` to denote no avatar.
             Only image formats supported for uploading are JPEG, PNG, GIF, and WEBP.
+        bio: Optional[:class:`str`]
+            The about me you wish to change to.
+            Could be ``None`` to denote no about me change.
 
         Returns
         -----------
@@ -2001,7 +2009,9 @@ class Guild(Hashable):
         member = self.me
 
         # Honestly haven't got a clue if just doing the first one is fine or not.
-        if not (nick or banner or avatar) or (nick is MISSING and banner is MISSING and avatar is MISSING):
+        if not (nick or banner or avatar or bio) or (
+            nick is MISSING and banner is MISSING and avatar is MISSING or bio is MISSING
+        ):
             return member
 
         payload: Dict[str, Any] = {}
@@ -2023,6 +2033,12 @@ class Guild(Hashable):
                 payload['avatar'] = utils._bytes_to_base64_data(data=avatar)
             else:
                 payload['avatar'] = utils._bytes_to_base64_data
+
+        if bio is not MISSING:
+            if bio:
+                payload['bio'] = bio
+            else:
+                payload['bio'] = None
 
         data = await self._state.http.edit_self(guild_id=self.id, **payload)
         if payload:
