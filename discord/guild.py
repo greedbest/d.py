@@ -2006,14 +2006,6 @@ class Guild(Hashable):
             The newly modified client member.
         """
 
-        member = self.me
-
-        # Honestly haven't got a clue if just doing the first one is fine or not.
-        if not (nick or banner or avatar or bio) or (
-            nick is MISSING and banner is MISSING and avatar is MISSING or bio is MISSING
-        ):
-            return member
-
         payload: Dict[str, Any] = {}
 
         if nick is not MISSING:
