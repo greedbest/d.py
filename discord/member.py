@@ -34,7 +34,7 @@ import discord.abc
 
 from . import utils
 from .asset import Asset
-from .utils import MISSING
+from .utils import MISSING, _bytes_to_base64_data
 from .user import BaseUser, ClientUser, User, _UserTag
 from .permissions import Permissions
 from .enums import Status

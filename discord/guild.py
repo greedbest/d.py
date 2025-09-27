@@ -1293,8 +1293,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, TextChannelPayload]:
-        ...
+    ) -> Coroutine[Any, Any, TextChannelPayload]: ...
 
     @overload
     def _create_channel(
@@ -1304,8 +1303,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, VoiceChannelPayload]:
-        ...
+    ) -> Coroutine[Any, Any, VoiceChannelPayload]: ...
 
     @overload
     def _create_channel(
@@ -1315,8 +1313,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, StageChannelPayload]:
-        ...
+    ) -> Coroutine[Any, Any, StageChannelPayload]: ...
 
     @overload
     def _create_channel(
@@ -1326,8 +1323,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, CategoryChannelPayload]:
-        ...
+    ) -> Coroutine[Any, Any, CategoryChannelPayload]: ...
 
     @overload
     def _create_channel(
@@ -1337,8 +1333,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, NewsChannelPayload]:
-        ...
+    ) -> Coroutine[Any, Any, NewsChannelPayload]: ...
 
     @overload
     def _create_channel(
@@ -1348,8 +1343,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, Union[TextChannelPayload, NewsChannelPayload]]:
-        ...
+    ) -> Coroutine[Any, Any, Union[TextChannelPayload, NewsChannelPayload]]: ...
 
     @overload
     def _create_channel(
@@ -1359,8 +1353,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, ForumChannelPayload]:
-        ...
+    ) -> Coroutine[Any, Any, ForumChannelPayload]: ...
 
     @overload
     def _create_channel(
@@ -1370,8 +1363,7 @@ class Guild(Hashable):
         overwrites: Mapping[Union[Role, Member, Object], PermissionOverwrite] = ...,
         category: Optional[Snowflake] = ...,
         **options: Any,
-    ) -> Coroutine[Any, Any, GuildChannelPayload]:
-        ...
+    ) -> Coroutine[Any, Any, GuildChannelPayload]: ...
 
     def _create_channel(
         self,
@@ -1972,6 +1964,77 @@ class Guild(Hashable):
         """
 
         await self._state.http.delete_guild(self.id)
+
+    async def edit_me(
+        self,
+        *,
+        nick: Optional[str] = MISSING,
+        banner: Optional[bytes] = MISSING,
+        avatar: Optional[bytes] = MISSING,
+        bio: Optional[str] = MISSING,
+    ) -> Optional[Member]:
+        """|coro|
+
+        Edits the current client member profile.
+
+        .. note::
+            To upload an avatar, or banner, a :term:`py:bytes-like object` must be passed in that
+            representes the image being uploaded. If this is done through a file
+            then the file must be opened via ``open('filename`, 'rb')`` and
+            the :term:`py:bytes-like object` is given through the use of ``fp.read()``.
+
+        Parameters
+        -----------
+        nick: Optional[:class:`str`]
+            The nickname you wish to change to.
+            Could be ``None`` to denote no nick change.
+        banner: Optional[:class:`bytes`]
+            A :term:`py:bytes-like object` representing the image to upload.
+            Could be ``None`` to denote no avatar.
+            Only image formats supported for uploading are JPEG, PNG, GIF, and WEBP.
+        avatar: Optional[:class:`bytes`]
+            A :term:`py:bytes-like object` representing the image to upload.
+            Could be ``None`` to denote no avatar.
+            Only image formats supported for uploading are JPEG, PNG, GIF, and WEBP.
+        bio: Optional[:class:`str`]
+            The about me you wish to change to.
+            Could be ``None`` to denote no about me change.
+
+        Returns
+        -----------
+        Optional[:class:`Member`]
+            The newly modified client member.
+        """
+
+        payload: Dict[str, Any] = {}
+
+        if nick is not MISSING:
+            if nick:
+                payload['nick'] = nick
+            else:
+                payload['nick'] = None
+
+        if banner is not MISSING:
+            if banner:
+                payload['banner'] = utils._bytes_to_base64_data(data=banner)
+            else:
+                payload['banner'] = None
+
+        if avatar is not MISSING:
+            if avatar:
+                payload['avatar'] = utils._bytes_to_base64_data(data=avatar)
+            else:
+                payload['avatar'] = utils._bytes_to_base64_data
+
+        if bio is not MISSING:
+            if bio:
+                payload['bio'] = bio
+            else:
+                payload['bio'] = None
+
+        data = await self._state.http.edit_self(guild_id=self.id, **payload)
+        if payload:
+            return Member(data=data, guild=self, state=self._state)
 
     async def edit(
         self,
@@ -3202,8 +3265,7 @@ class Guild(Hashable):
         description: str = ...,
         image: bytes = ...,
         reason: Optional[str] = ...,
-    ) -> ScheduledEvent:
-        ...
+    ) -> ScheduledEvent: ...
 
     @overload
     async def create_scheduled_event(
@@ -3218,8 +3280,7 @@ class Guild(Hashable):
         description: str = ...,
         image: bytes = ...,
         reason: Optional[str] = ...,
-    ) -> ScheduledEvent:
-        ...
+    ) -> ScheduledEvent: ...
 
     @overload
     async def create_scheduled_event(
@@ -3233,8 +3294,7 @@ class Guild(Hashable):
         description: str = ...,
         image: bytes = ...,
         reason: Optional[str] = ...,
-    ) -> ScheduledEvent:
-        ...
+    ) -> ScheduledEvent: ...
 
     @overload
     async def create_scheduled_event(
@@ -3248,8 +3308,7 @@ class Guild(Hashable):
         description: str = ...,
         image: bytes = ...,
         reason: Optional[str] = ...,
-    ) -> ScheduledEvent:
-        ...
+    ) -> ScheduledEvent: ...
 
     async def create_scheduled_event(
         self,
@@ -3614,8 +3673,7 @@ class Guild(Hashable):
         hoist: bool = ...,
         display_icon: Union[bytes, str] = MISSING,
         mentionable: bool = ...,
-    ) -> Role:
-        ...
+    ) -> Role: ...
 
     @overload
     async def create_role(
@@ -3628,8 +3686,7 @@ class Guild(Hashable):
         hoist: bool = ...,
         display_icon: Union[bytes, str] = MISSING,
         mentionable: bool = ...,
-    ) -> Role:
-        ...
+    ) -> Role: ...
 
     async def create_role(
         self,
