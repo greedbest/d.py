@@ -1167,7 +1167,7 @@ class HTTPClient:
         return self.request(r, json=fields, reason=reason)
 
     def edit_self(self, guild_id: Snowflake, **fields: Any) -> Response[member.MemberWithUser]:
-        r = Route(method='PATCH', path='/guilds/{guild.id}/members/@me', guild_id=guild_id)
+        r = Route(method='PATCH', path='/guilds/{guild_id}/members/@me', guild_id=guild_id)
         return self.request(r, json=fields)
 
     def get_my_voice_state(self, guild_id: Snowflake) -> Response[voice.GuildVoiceState]:
