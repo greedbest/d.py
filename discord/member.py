@@ -34,7 +34,7 @@ import discord.abc
 
 from . import utils
 from .asset import Asset
-from .utils import MISSING
+from .utils import MISSING, _bytes_to_base64_data
 from .user import BaseUser, ClientUser, User, _UserTag
 from .permissions import Permissions
 from .enums import Status
@@ -786,6 +786,69 @@ class Member(discord.abc.Messageable, _UserTag):
         Kicks this member. Equivalent to :meth:`Guild.kick`.
         """
         await self.guild.kick(self, reason=reason)
+
+    async def edit_me(
+        self, *, nick: Optional[str] = MISSING, banner: Optional[bytes] = MISSING, avatar: Optional[bytes] = MISSING
+    ) -> Optional[Member]:
+        """|coro|
+
+        Edits the current client member profile.
+
+        .. note::
+            To upload an avatar, or banner, a :term:`py:bytes-like object` must be passed in that
+            representes the image being uploaded. If this is done through a file
+            then the file must be opened via ``open('filename`, 'rb')`` and
+            the :term:`py:bytes-like object` is given through the use of ``fp.read()``.
+
+        Parameters
+        -----------
+        nick: Optional[:class:`str`]
+            The nickname you wish to change to.
+            Could be ``None`` to denote no nick change.
+        banner: Optional[:class:`bytes`]
+            A :term:`py:bytes-like object` representing the image to upload.
+            Could be ``None`` to denote no avatar.
+            Only image formats supported for uploading are JPEG, PNG, GIF, and WEBP.
+        avatar: Optional[:class:`bytes`]
+            A :term:`py:bytes-like object` representing the image to upload.
+            Could be ``None`` to denote no avatar.
+            Only image formats supported for uploading are JPEG, PNG, GIF, and WEBP.
+
+        Returns
+        -----------
+        Optional[:class:`Member`]
+            The newly modified client member.
+        """
+
+        member = self.guild.me
+
+        # Honestly haven't got a clue if just doing the first one is fine or not.
+        if not (nick or banner or avatar) or (nick is MISSING and banner is MISSING and avatar is MISSING):
+            return member
+
+        payload: Dict[str, Any] = {}
+
+        if nick is not MISSING:
+            if nick:
+                payload['nick'] = nick
+            else:
+                payload['nick'] = None
+
+        if banner is not MISSING:
+            if banner:
+                payload['banner'] = _bytes_to_base64_data(data=banner)
+            else:
+                payload['banner'] = None
+
+        if avatar is not MISSING:
+            if avatar:
+                payload['avatar'] = _bytes_to_base64_data(data=avatar)
+            else:
+                payload['avatar'] = None
+
+        data = await self._state.http.edit_self(guild_id=self.guild.id, **payload)
+        if payload:
+            return Member(data=data, guild=self.guild, state=self._state)
 
     async def edit(
         self,
