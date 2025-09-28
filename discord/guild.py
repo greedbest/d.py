@@ -2024,7 +2024,7 @@ class Guild(Hashable):
             if avatar:
                 payload['avatar'] = utils._bytes_to_base64_data(data=avatar)
             else:
-                payload['avatar'] = utils._bytes_to_base64_data
+                payload['avatar'] = None
 
         if bio is not MISSING:
             if bio:
