@@ -458,13 +458,13 @@ class Guild(Hashable):
     }
 
     def __init__(self, *, data: GuildPayload, state: ConnectionState) -> None:
-        self._channels: Dict[int, GuildChannel] = {}
-        self._members: Dict[int, Member] = {}
-        self._voice_states: Dict[int, VoiceState] = {}
-        self._threads: Dict[int, Thread] = {}
-        self._stage_instances: Dict[int, StageInstance] = {}
-        self._scheduled_events: Dict[int, ScheduledEvent] = {}
-        self._soundboard_sounds: Dict[int, SoundboardSound] = {}
+        self._channels: Dict[int, GuildChannel] = {} if state.cache_options.guild_channels else state.create_immutable_dict()
+        self._members: Dict[int, Member] = {} if state.cache_options.members else state.create_immutable_dict()
+        self._voice_states: Dict[int, VoiceState] = {} if state.cache_options.voice_states else state.create_immutable_dict()
+        self._threads: Dict[int, Thread] = {} if state.cache_options.threads else state.create_immutable_dict()
+        self._stage_instances: Dict[int, StageInstance] = {} if state.cache_options.stage_instances else state.create_immutable_dict()
+        self._scheduled_events: Dict[int, ScheduledEvent] = {} if state.cache_options.scheduled_events else state.create_immutable_dict()
+        self._soundboard_sounds: Dict[int, SoundboardSound] = {} if state.cache_options.soundboard_sounds else state.create_immutable_dict()
         self._state: ConnectionState = state
         self._member_count: Optional[int] = None
         self._from_data(data)
@@ -589,7 +589,7 @@ class Guild(Hashable):
         self._banner: Optional[str] = guild.get('banner')
         self.unavailable: bool = guild.get('unavailable', False)
         self.id: int = int(guild['id'])
-        self._roles: Dict[int, Role] = {}
+        self._roles: Dict[int, Role] = {} if self._state.cache_options.roles else self._state.create_immutable_dict()
         state = self._state  # speed up attribute access
         for r in guild.get('roles', []):
             role = Role(guild=self, data=r, state=state)

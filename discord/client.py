@@ -125,6 +125,7 @@ if TYPE_CHECKING:
 # fmt: off
 __all__ = (
     'Client',
+    'CacheOptions',
 )
 # fmt: on
 
@@ -148,6 +149,173 @@ class _LoopSentinel:
 
 
 _loop: Any = _LoopSentinel()
+
+
+class CacheOptions:
+    """Represents a :class:`Client` cache control.
+
+    Using this may allow you to control what things you want your client
+    to cache.
+
+    .. warning::
+
+        Using this may result in unexpected behaviour in certain parts of the
+        library. For example, disabling ``guilds`` may cause problems on objects
+        with a ``.guild`` attribute returning ``None``.
+
+    All parameters default to ``True`` unless explicitly set to ``False``.
+
+    Parameters
+    ----------
+    guilds: :class:`bool`
+        Whether to cache guilds. Defaults to whether :attr:`Intents.guilds` is enabled
+        or not.
+    users: :class:`bool`
+        Whether to cache users.
+    members: :class:`bool`
+        Whether to cache members. Defaults to whether :attr:`Intents.members` is enabled
+        or not.
+    presences: :class:`bool`
+        Whether to cache members. Defaults to whether :attr:`Intents.presences` is enabled
+        or not.
+    voice_states: :class:`bool`
+        Whether to cache voice states. Defaults to whether :attr:`Intents.voice_states` is enabled
+        or not.
+    emojis_and_stickers: :class:`bool`
+        Whether to cache emojis and stickers. Defaults to whether :attr:`Intents.emojis_and_stickers` is enabled
+        or not.
+    soundboard_sounds: :class:`bool`
+        Whether to cache guild's soundboard sounds.
+    private_channels: :class:`bool`
+        Whether to cache private channels (aka DMs/Group DMS).
+    guild_channels: :class:`bool`
+        Whether to cache guild channels.
+    roles: :class:`bool`
+        Whether to cache guild roles.
+    threads: :class:`bool`
+        Whether to cache threads.
+    scheduled_events: :class:`bool`
+        Whether to cache scheduled events.
+    stage_instances: :class:`bool`
+        Whether to cache stage instances.
+    """
+
+    __valid_flags__ = (
+        'guilds',
+        'users',
+        'members',
+        'presences',
+        'voice_states',
+        'emojis_and_stickers',
+        'soundboard_sounds',
+        'private_channels',
+        'guild_channels',
+        'roles',
+        'threads',
+        'scheduled_events',
+        'stage_instances',
+    )
+
+    if TYPE_CHECKING:
+        guilds: bool
+        users: bool
+        members: bool
+        presences: bool
+        voice_states: bool
+        emojis_and_stickers: bool
+        soundboard_sounds: bool
+        private_channels: bool
+        guild_channels: bool
+        roles: bool
+        threads: bool
+        scheduled_events: bool
+        stage_instances: bool
+
+    @overload
+    def __init__(
+        self,
+        *,
+        guilds: bool = MISSING,
+        users: bool = MISSING,
+        members: bool = MISSING,
+        presences: bool = MISSING,
+        voice_states: bool = MISSING,
+        emojis_and_stickers: bool = MISSING,
+        soundboard_sounds: bool = MISSING,
+        private_channels: bool = MISSING,
+        guild_channels: bool = MISSING,
+        roles: bool = MISSING,
+        threads: bool = MISSING,
+        scheduled_events: bool = MISSING,
+        stage_instances: bool = MISSING,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        **kwargs: bool,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        **kwargs: bool,
+    ) -> None:
+        self._cache_data = kwargs
+
+    def __getattr__(self, name: str) -> Any:
+        val = self._cache_data.get(name)
+        if val is not None:
+            return val if val is not MISSING else False
+        if name in self.__valid_flags__:
+            return True  # the flag has not been set, but assume they want it enabled
+        raise AttributeError(f'attribute {name!r} does not exist for {self.__class__.__name__!r}')
+
+    def __setattr__(self, name: str, value: bool) -> None:
+        if name not in self.__valid_flags__:
+            raise AttributeError(f'attribute {name!r} does not exist for {self.__class__.__name__!r}')
+        self._cache_data[name] = value
+
+    @classmethod
+    def from_intents(cls, intents: Intents, /) -> CacheOptions:
+        """Creates a new :class:`CacheOptions` instance from a :class:`Intents`
+        one.
+
+        Parameters
+        ----------
+        intents: :class:`Intents`
+            The intents to use.
+
+        Returns
+        -------
+        :class:`CacheOptions`
+            A new instance of cache options.
+        """
+
+        return cls(
+            guilds=intents.guilds,
+            members=intents.members,
+            presences=intents.presences,
+            voice_states=intents.voice_states,
+            emojis_and_stickers=intents.emojis_and_stickers,
+        )
+
+    @classmethod
+    def none(cls) -> CacheOptions:
+        """Creates a new :class:`CacheOptions` instance with nothing enabled.
+
+        Returns
+        -------
+        :class:`CacheOptions`
+            A new instance of cache options.
+        """
+        return cls(
+            **{flag: False for flag in cls.__valid_flags__}
+        )
+
+    def _update_from_intents(self, intents: Intents) -> None:
+        for key in ('guilds', 'members', 'presences', 'voice_states', 'emojis_and_stickers'):
+            ret = getattr(self, key, False)
+            self._cache_data[key] = ret or getattr(intents, key, False)
 
 
 class Client:
@@ -265,6 +433,10 @@ class Client:
         behavior, such as setting a dns resolver or sslcontext.
 
         .. versionadded:: 2.5
+    global_ratelimit_sleep_time: :class:`float`
+        The time to sleep to prevent global ratelimits. Defaults to ``5``.
+    cache_options: :class:`CacheOptions`
+        The cache options of this client.
 
     Attributes
     -----------
@@ -286,6 +458,7 @@ class Client:
         unsync_clock: bool = options.pop('assume_unsync_clock', True)
         http_trace: Optional[aiohttp.TraceConfig] = options.pop('http_trace', None)
         max_ratelimit_timeout: Optional[float] = options.pop('max_ratelimit_timeout', None)
+        global_sleep_time: Optional[float] = options.pop('global_ratelimit_sleep_time', None)
         self.http: HTTPClient = HTTPClient(
             self.loop,
             connector,
@@ -294,6 +467,7 @@ class Client:
             unsync_clock=unsync_clock,
             http_trace=http_trace,
             max_ratelimit_timeout=max_ratelimit_timeout,
+            global_sleep_time=global_sleep_time,
         )
 
         self._handlers: Dict[str, Callable[..., None]] = {
@@ -303,6 +477,10 @@ class Client:
         self._hooks: Dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {
             'before_identify': self._call_before_identify_hook,
         }
+
+        cache_options: Optional[CacheOptions] = options.get('cache_options')
+        if cache_options is None:
+            options['cache_options'] = CacheOptions.from_intents(intents)
 
         self._enable_debug_events: bool = options.pop('enable_debug_events', False)
         self._connection: ConnectionState[Self] = self._get_state(intents=intents, **options)

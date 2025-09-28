@@ -516,6 +516,7 @@ class HTTPClient:
         unsync_clock: bool = True,
         http_trace: Optional[aiohttp.TraceConfig] = None,
         max_ratelimit_timeout: Optional[float] = None,
+        global_sleep_time: Optional[float] = None,
     ) -> None:
         self.loop: asyncio.AbstractEventLoop = loop
         self.connector: aiohttp.BaseConnector = connector or MISSING
@@ -539,6 +540,8 @@ class HTTPClient:
 
         user_agent = 'DiscordBot (https://github.com/Rapptz/discord.py {0}) Python/{1[0]}.{1[1]} aiohttp/{2}'
         self.user_agent: str = user_agent.format(__version__, sys.version_info, aiohttp.__version__)
+        self._request_history: deque[float] = deque()
+        self.global_sleep_time: float = global_sleep_time if global_sleep_time is not None else 5
 
     def clear(self) -> None:
         if self.__session and self.__session.closed:
@@ -574,6 +577,15 @@ class HTTPClient:
             self._buckets[key] = value = Ratelimit(self.max_ratelimit_timeout)
             self._try_clear_expired_ratelimits()
         return value
+
+    def clear_global_requests(self, now: Optional[float] = None) -> None:
+        if now is None:
+            now = self.loop.time()
+
+        self._request_history = deque(
+            t for t in self._request_history
+            if t > (now - 1)
+        )
 
     async def request(
         self,
@@ -633,6 +645,17 @@ class HTTPClient:
         data: Optional[Union[Dict[str, Any], str]] = None
         async with ratelimit:
             for tries in range(5):
+                now = self.loop.time()
+                if len(self._request_history) + 1 >= 50:
+                    first = self._request_history.popleft()
+
+                    if now - first <= 1:
+                        _log.info(f'Sleeping {self.global_sleep_time} seconds to prevent global ratelimit...')
+                        await asyncio.sleep(self.global_sleep_time)
+                    self.clear_global_requests(now)
+
+                self._request_history.append(now)
+
                 if files:
                     for f in files:
                         f.reset(seek=tries)
