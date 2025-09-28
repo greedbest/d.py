@@ -1979,7 +1979,7 @@ class Guild(Hashable):
 
         .. note::
             To upload an avatar, or banner, a :term:`py:bytes-like object` must be passed in that
-            representes the image being uploaded. If this is done through a file
+            represents the image being uploaded. If this is done through a file
             then the file must be opened via ``open('filename`, 'rb')`` and
             the :term:`py:bytes-like object` is given through the use of ``fp.read()``.
 
@@ -2024,7 +2024,7 @@ class Guild(Hashable):
             if avatar:
                 payload['avatar'] = utils._bytes_to_base64_data(data=avatar)
             else:
-                payload['avatar'] = utils._bytes_to_base64_data
+                payload['avatar'] = None
 
         if bio is not MISSING:
             if bio:
