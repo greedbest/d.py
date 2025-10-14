@@ -94,6 +94,7 @@ if TYPE_CHECKING:
     from .ui.dynamic import DynamicItem
     from .app_commands import CommandTree, Translator
     from .poll import Poll
+    from .client import CacheOptions
 
     from .types.automod import AutoModerationRule, AutoModerationActionExecution
     from .types.snowflake import Snowflake
@@ -109,6 +110,9 @@ if TYPE_CHECKING:
 
     T = TypeVar('T')
     Channel = Union[GuildChannel, PrivateChannel, PartialMessageable]
+
+K = TypeVar('K')
+V = TypeVar('V')
 
 
 class ChunkRequest:
@@ -169,6 +173,16 @@ async def logging_coroutine(coroutine: Coroutine[Any, Any, T], *, info: str) -> 
         await coroutine
     except Exception:
         _log.exception('Exception occurred during %s', info)
+
+
+class ImmutableDict(Generic[K, V], Dict[K, V]):
+    def __init__(self, state: ConnectionState) -> None:
+        self.__state: ConnectionState = state
+        super().__init__()
+
+    def __setitem__(self, key: K, value: V) -> None:
+        if self.__state.self_id and key == self.__state.self_id:
+            super().__setitem__(key, value)
 
 
 class ConnectionState(Generic[ClientT]):
@@ -271,6 +285,8 @@ class ConnectionState(Generic[ClientT]):
         for attr, func in inspect.getmembers(self):
             if attr.startswith('parse_'):
                 parsers[attr[6:].upper()] = func
+        self.cache_options: CacheOptions = options['cache_options']  # this will always be present
+        self.cache_options._update_from_intents(self._intents)
 
         self.clear()
 
@@ -279,7 +295,10 @@ class ConnectionState(Generic[ClientT]):
     # So this is checked instead, it's a small penalty to pay
     @property
     def cache_guild_expressions(self) -> bool:
-        return self._intents.emojis_and_stickers
+        return self._intents.emojis_and_stickers and self.cache_options.emojis_and_stickers
+
+    def create_immutable_dict(self, key_type: K = Any, value_type: V = Any) -> ImmutableDict[K, V]:
+        return ImmutableDict(self)
 
     async def close(self) -> None:
         for voice in self.voice_clients:
@@ -388,7 +407,11 @@ class ConnectionState(Generic[ClientT]):
             return self._users[user_id]
         except KeyError:
             user = User(state=self, data=data)
-            if cache:
+            if cache and self.cache_options.users:
+                self._users[user_id] = user
+
+            # always keep a reference to the self user
+            if user_id == self.self_id:
                 self._users[user_id] = user
             return user
 
@@ -404,12 +427,16 @@ class ConnectionState(Generic[ClientT]):
     def store_emoji(self, guild: Guild, data: EmojiPayload) -> Emoji:
         # the id will be present here
         emoji_id = int(data['id'])  # type: ignore
-        self._emojis[emoji_id] = emoji = Emoji(guild=guild, state=self, data=data)
+        emoji = Emoji(guild=guild, state=self, data=data)
+        if self.cache_guild_expressions:
+            self._emojis[emoji_id] = emoji
         return emoji
 
     def store_sticker(self, guild: Guild, data: GuildStickerPayload) -> GuildSticker:
         sticker_id = int(data['id'])
-        self._stickers[sticker_id] = sticker = GuildSticker(state=self, data=data)
+        sticker = GuildSticker(state=self, data=data)
+        if self.cache_guild_expressions:
+            self._stickers[sticker_id] = sticker
         return sticker
 
     def store_view(self, view: BaseView, message_id: Optional[int] = None, interaction_id: Optional[int] = None) -> None:
@@ -442,7 +469,8 @@ class ConnectionState(Generic[ClientT]):
         return self._guilds.get(guild_id) or Guild._create_unavailable(state=self, guild_id=guild_id, data=data)
 
     def _add_guild(self, guild: Guild) -> None:
-        self._guilds[guild.id] = guild
+        if self.cache_options.guilds:
+            self._guilds[guild.id] = guild
 
     def _remove_guild(self, guild: Guild) -> None:
         self._guilds.pop(guild.id, None)
@@ -499,6 +527,9 @@ class ConnectionState(Generic[ClientT]):
         return self._private_channels_by_user.get(user_id)  # type: ignore
 
     def _add_private_channel(self, channel: PrivateChannel) -> None:
+        if not self.cache_options.private_channels:
+            return
+
         channel_id = channel.id
         self._private_channels[channel_id] = channel
 
